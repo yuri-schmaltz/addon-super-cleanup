@@ -15,6 +15,106 @@ from mathutils import Vector, Matrix
 
 
 # ============================================================
+# Localização simples (PT/EN)
+# ============================================================
+DEFAULT_LANGUAGE = "PT"
+
+LOCALE_STRINGS = {
+    "PT": {
+        "prefs_language": "Idioma",
+        "prefs_language_desc": "Escolha o idioma das labels e mensagens do addon.",
+        "prefs_language_label": "Idioma do Add-on",
+        "prefs_language_prop": "Idioma",
+        "plane_mode": "Plano de Referência",
+        "plane_mode_desc": "Como definir o plano final",
+        "plane_best_fit": "Melhor Ajuste",
+        "plane_best_fit_desc": "Plano de melhor ajuste pelos vértices selecionados",
+        "plane_active": "Face Ativa",
+        "plane_active_desc": "Usa a normal/centro da face ativa (deve estar na seleção)",
+        "plane_average": "Média das Normais",
+        "plane_average_desc": "Média ponderada das normais das faces selecionadas",
+        "remove_doubles": "Weld no Contorno",
+        "remove_doubles_desc": "Mescla pontos muito próximos no contorno antes de criar a face",
+        "merge_distance": "Distância Weld",
+        "simplify_boundary": "Simplificar Contorno",
+        "simplify_boundary_desc": "Dissolve vértices colineares no contorno (reduz pontos 'extras' no perímetro)",
+        "simplify_angle": "Tolerância (°)",
+        "simplify_angle_desc": "Quanto mais alto, mais agressivo ao remover vértices colineares",
+        "keep_largest_loop": "Usar Apenas o Maior Contorno",
+        "keep_largest_loop_desc": "Se houver múltiplos contornos, mantém apenas o de maior área (preenche 'furos')",
+        "recalc_normals": "Recalcular Normais",
+        "panel_label": "Flat Surface Cleaner",
+        "section_plane": "Plano / Reconstrução:",
+        "section_contour": "Contorno:",
+        "operator_label": "Planarizar e Recriar como 1 Face",
+        "report_select_faces": "Selecione FACES (uma região de faces) antes de executar.",
+        "report_minimum_selection": "Seleção insuficiente (mínimo 3 vértices).",
+        "report_no_boundary": "Não foi encontrado contorno. A seleção parece não definir uma 'tampa' aberta.",
+        "report_invalid_active": "Face ativa inválida. Ative uma face dentro da seleção ou use 'Melhor Ajuste'.",
+        "report_invalid_selection": "A seleção ficou inválida após weld (sem faces).",
+        "report_invalid_loop": "Contorno inválido (não foi possível formar loop fechado).",
+        "report_invalid_loop_after_cleanup": "Loop inválido após limpeza (contorno insuficiente).",
+        "report_create_face_fail": "Falha ao criar uma única face. Contorno pode estar auto-intersectando ou não-manifold.",
+    },
+    "EN": {
+        "prefs_language": "Language",
+        "prefs_language_desc": "Choose the language for the add-on labels and messages.",
+        "prefs_language_label": "Add-on Language",
+        "prefs_language_prop": "Language",
+        "plane_mode": "Reference Plane",
+        "plane_mode_desc": "How to define the final plane",
+        "plane_best_fit": "Best Fit",
+        "plane_best_fit_desc": "Best-fit plane using the selected vertices",
+        "plane_active": "Active Face",
+        "plane_active_desc": "Use the active face normal/center (must be within the selection)",
+        "plane_average": "Average Normals",
+        "plane_average_desc": "Weighted average of the selected faces' normals",
+        "remove_doubles": "Boundary Weld",
+        "remove_doubles_desc": "Merge very close points on the boundary before creating the face",
+        "merge_distance": "Weld Distance",
+        "simplify_boundary": "Simplify Boundary",
+        "simplify_boundary_desc": "Dissolve collinear boundary vertices (removes extra perimeter points)",
+        "simplify_angle": "Tolerance (°)",
+        "simplify_angle_desc": "Higher values remove collinear vertices more aggressively",
+        "keep_largest_loop": "Use Only Largest Boundary",
+        "keep_largest_loop_desc": "If multiple boundaries exist, keep only the one with the largest area (fills holes)",
+        "recalc_normals": "Recalculate Normals",
+        "panel_label": "Flat Surface Cleaner",
+        "section_plane": "Plane / Rebuild:",
+        "section_contour": "Boundary:",
+        "operator_label": "Flatten and Rebuild as 1 Face",
+        "report_select_faces": "Select FACES (a face region) before running.",
+        "report_minimum_selection": "Selection too small (minimum 3 vertices).",
+        "report_no_boundary": "No boundary found. The selection does not seem to define an open cap.",
+        "report_invalid_active": "Invalid active face. Activate a face inside the selection or use 'Best Fit'.",
+        "report_invalid_selection": "Selection became invalid after weld (no faces).",
+        "report_invalid_loop": "Invalid boundary (could not form a closed loop).",
+        "report_invalid_loop_after_cleanup": "Invalid loop after cleanup (insufficient boundary).",
+        "report_create_face_fail": "Failed to create a single face. Boundary may self-intersect or be non-manifold.",
+    },
+}
+
+
+def _get_language():
+    try:
+        prefs = bpy.context.preferences
+        if prefs:
+            addon = prefs.addons.get(__name__)
+            if addon and hasattr(addon, "preferences"):
+                return addon.preferences.language
+    except Exception:
+        pass
+    return DEFAULT_LANGUAGE
+
+
+def L(key: str) -> str:
+    lang = _get_language()
+    locale = LOCALE_STRINGS.get(lang) or LOCALE_STRINGS.get(DEFAULT_LANGUAGE, {})
+    fallback = LOCALE_STRINGS.get(DEFAULT_LANGUAGE, {})
+    return locale.get(key) or fallback.get(key, key)
+
+
+# ============================================================
 # Matemática: plano de melhor ajuste (sem numpy)
 # ============================================================
 def _deg_to_rad(d: float) -> float:
@@ -292,28 +392,35 @@ def _dissolve_collinear_boundary(bm, loop_verts, angle_tol_rad: float):
 
 
 # ============================================================
+# Itens dinâmicos
+# ============================================================
+def _plane_mode_items(self, _context):
+    return [
+        ("BEST_FIT", L("plane_best_fit"), L("plane_best_fit_desc")),
+        ("ACTIVE", L("plane_active"), L("plane_active_desc")),
+        ("AVERAGE", L("plane_average"), L("plane_average_desc")),
+    ]
+
+
+# ============================================================
 # Propriedades / UI
 # ============================================================
 class FSC_Settings(bpy.types.PropertyGroup):
     plane_mode: bpy.props.EnumProperty(
-        name="Plano de Referência",
-        description="Como definir o plano final",
-        items=[
-            ("BEST_FIT", "Melhor Ajuste", "Plano de melhor ajuste pelos vértices selecionados"),
-            ("ACTIVE", "Face Ativa", "Usa a normal/centro da face ativa (deve estar na seleção)"),
-            ("AVERAGE", "Média das Normais", "Média ponderada das normais das faces selecionadas"),
-        ],
+        name=L("plane_mode"),
+        description=L("plane_mode_desc"),
+        items=_plane_mode_items,
         default="BEST_FIT",
     )
 
     remove_doubles: bpy.props.BoolProperty(
-        name="Weld no Contorno",
-        description="Mescla pontos muito próximos no contorno antes de criar a face",
+        name=L("remove_doubles"),
+        description=L("remove_doubles_desc"),
         default=True,
     )
 
     merge_distance: bpy.props.FloatProperty(
-        name="Distância Weld",
+        name=L("merge_distance"),
         default=0.0001,
         min=0.0,
         max=0.1,
@@ -321,29 +428,48 @@ class FSC_Settings(bpy.types.PropertyGroup):
     )
 
     simplify_boundary: bpy.props.BoolProperty(
-        name="Simplificar Contorno",
-        description="Dissolve vértices colineares no contorno (reduz pontos 'extras' no perímetro)",
+        name=L("simplify_boundary"),
+        description=L("simplify_boundary_desc"),
         default=False,
     )
 
     simplify_angle: bpy.props.FloatProperty(
-        name="Tolerância (°)",
-        description="Quanto mais alto, mais agressivo ao remover vértices colineares",
+        name=L("simplify_angle"),
+        description=L("simplify_angle_desc"),
         default=0.2,
         min=0.0,
         max=5.0,
     )
 
     keep_largest_loop: bpy.props.BoolProperty(
-        name="Usar Apenas o Maior Contorno",
-        description="Se houver múltiplos contornos, mantém apenas o de maior área (preenche 'furos')",
+        name=L("keep_largest_loop"),
+        description=L("keep_largest_loop_desc"),
         default=True,
     )
 
     recalc_normals: bpy.props.BoolProperty(
-        name="Recalcular Normais",
+        name=L("recalc_normals"),
         default=True,
     )
+
+
+class FSC_AddonPreferences(bpy.types.AddonPreferences):
+    bl_idname = __name__
+
+    language: bpy.props.EnumProperty(
+        name=L("prefs_language"),
+        description=L("prefs_language_desc"),
+        items=[
+            ("PT", "Português", "Mostrar labels e mensagens em português"),
+            ("EN", "English", "Show labels and messages in English"),
+        ],
+        default=DEFAULT_LANGUAGE,
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text=L("prefs_language_label"))
+        layout.prop(self, "language", text=L("prefs_language_prop"))
 
 
 # ============================================================
@@ -351,7 +477,7 @@ class FSC_Settings(bpy.types.PropertyGroup):
 # ============================================================
 class FSC_OT_make_planar_single_face(bpy.types.Operator):
     bl_idname = "mesh.fsc_make_planar_single_face"
-    bl_label = "Planarizar e Recriar como 1 Face"
+    bl_label = L("operator_label")
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
@@ -371,12 +497,12 @@ class FSC_OT_make_planar_single_face(bpy.types.Operator):
 
         sel_faces = _selected_faces(bm)
         if not sel_faces:
-            self.report({"WARNING"}, "Selecione FACES (uma região de faces) antes de executar.")
+            self.report({"WARNING"}, L("report_select_faces"))
             return {"CANCELLED"}
 
         sel_verts = {v for f in sel_faces for v in f.verts}
         if len(sel_verts) < 3:
-            self.report({"WARNING"}, "Seleção insuficiente (mínimo 3 vértices).")
+            self.report({"WARNING"}, L("report_minimum_selection"))
             return {"CANCELLED"}
 
         boundary_edges = _boundary_edges_of_selected_faces(sel_faces)
@@ -388,14 +514,14 @@ class FSC_OT_make_planar_single_face(bpy.types.Operator):
                 _project_verts_to_plane(sel_verts, p0, n)
                 bmesh.update_edit_mesh(me, loop_triangles=False, destructive=True)
                 return {"FINISHED"}
-            self.report({"ERROR"}, "Não foi encontrado contorno. A seleção parece não definir uma 'tampa' aberta.")
+            self.report({"ERROR"}, L("report_no_boundary"))
             return {"CANCELLED"}
 
         # Define o plano final
         if st.plane_mode == "ACTIVE":
             af = bm.faces.active
             if af is None or not af.select:
-                self.report({"WARNING"}, "Face ativa inválida. Ative uma face dentro da seleção ou use 'Melhor Ajuste'.")
+                self.report({"WARNING"}, L("report_invalid_active"))
                 return {"CANCELLED"}
             normal = af.normal.normalized()
             origin = af.calc_center_median()
@@ -422,14 +548,14 @@ class FSC_OT_make_planar_single_face(bpy.types.Operator):
         # Recalcula boundary após weld
         sel_faces = [f for f in bm.faces if f.select]
         if not sel_faces:
-            self.report({"ERROR"}, "A seleção ficou inválida após weld (sem faces).")
+            self.report({"ERROR"}, L("report_invalid_selection"))
             return {"CANCELLED"}
 
         sel_verts = {v for f in sel_faces for v in f.verts}
         boundary_edges = _boundary_edges_of_selected_faces(sel_faces)
         loops = _edges_to_loops(boundary_edges)
         if not loops:
-            self.report({"ERROR"}, "Contorno inválido (não foi possível formar loop fechado).")
+            self.report({"ERROR"}, L("report_invalid_loop"))
             return {"CANCELLED"}
 
         # Escolhe loop (maior área no plano) se solicitado
@@ -502,7 +628,7 @@ class FSC_OT_make_planar_single_face(bpy.types.Operator):
         # (operação final deve usar o loop em ordem)
         loop = [v for v in loop if getattr(v, "is_valid", False)]
         if len(loop) < 3:
-            self.report({"ERROR"}, "Loop inválido após limpeza (contorno insuficiente).")
+            self.report({"ERROR"}, L("report_invalid_loop_after_cleanup"))
             return {"CANCELLED"}
 
         # Cria UMA face (ngon) com o contorno
@@ -520,7 +646,7 @@ class FSC_OT_make_planar_single_face(bpy.types.Operator):
             new_face = None
 
         if new_face is None:
-            self.report({"ERROR"}, "Falha ao criar uma única face. Contorno pode estar auto-intersectando ou não-manifold.")
+            self.report({"ERROR"}, L("report_create_face_fail"))
             return {"CANCELLED"}
 
         # Seleciona apenas a face final
@@ -548,7 +674,7 @@ class FSC_OT_make_planar_single_face(bpy.types.Operator):
 # Painel
 # ============================================================
 class FSC_PT_panel(bpy.types.Panel):
-    bl_label = "Flat Surface Cleaner"
+    bl_label = L("panel_label")
     bl_idname = "FSC_PT_panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -564,33 +690,34 @@ class FSC_PT_panel(bpy.types.Panel):
         st = context.scene.fsc_settings
 
         col = layout.column(align=True)
-        col.label(text="Plano / Reconstrução:")
-        col.prop(st, "plane_mode")
-        col.prop(st, "keep_largest_loop")
+        col.label(text=L("section_plane"))
+        col.prop(st, "plane_mode", text=L("plane_mode"))
+        col.prop(st, "keep_largest_loop", text=L("keep_largest_loop"))
 
         layout.separator()
 
         col = layout.column(align=True)
-        col.label(text="Contorno:")
-        col.prop(st, "remove_doubles")
+        col.label(text=L("section_contour"))
+        col.prop(st, "remove_doubles", text=L("remove_doubles"))
         sub = col.column(align=True)
         sub.enabled = st.remove_doubles
-        sub.prop(st, "merge_distance")
-        col.prop(st, "simplify_boundary")
+        sub.prop(st, "merge_distance", text=L("merge_distance"))
+        col.prop(st, "simplify_boundary", text=L("simplify_boundary"))
         sub = col.column(align=True)
         sub.enabled = st.simplify_boundary
-        sub.prop(st, "simplify_angle")
+        sub.prop(st, "simplify_angle", text=L("simplify_angle"))
 
-        layout.prop(st, "recalc_normals")
+        layout.prop(st, "recalc_normals", text=L("recalc_normals"))
 
         layout.separator()
-        layout.operator("mesh.fsc_make_planar_single_face", icon="MESH_GRID")
+        layout.operator("mesh.fsc_make_planar_single_face", icon="MESH_GRID", text=L("operator_label"))
 
 
 # ============================================================
 # Registro
 # ============================================================
 classes = (
+    FSC_AddonPreferences,
     FSC_Settings,
     FSC_OT_make_planar_single_face,
     FSC_PT_panel,
